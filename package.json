@@ -1,0 +1,22 @@
+{
+  "name": "projectmanagement",
+  "version": "1.0.0",
+  "description": "a project management application",
+  "keywords": [
+    "udemy",
+    "course",
+    "backend",
+    "API",
+    "creation"
+  ],
+  "license": "ISC",
+  "author": "Akash Rai",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node index.js"
+  },
+  "devDependencies": {
+    "prettier": "3.8.1"
+  }
+}
