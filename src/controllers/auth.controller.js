@@ -5,12 +5,12 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
 
 /**
- * @description Generates both access and refresh tokens for a user
- * @param {string} userId
+ * Generate access + refresh token
  */
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
         const user = await User.findById(userId);
+
         const accessToken = user.generateAccessToken();
         const refreshToken = user.generateRefreshToken();
 
@@ -19,75 +19,60 @@ const generateAccessAndRefreshTokens = async (userId) => {
 
         return { accessToken, refreshToken };
     } catch (error) {
-        throw new ApiError(
-            500,
-            "Something went wrong while generating access token",
-        );
+        throw new ApiError(500, "Token generation failed");
     }
 };
 
+/**
+ * REGISTER USER
+ */
 const registerUser = asyncHandler(async (req, res) => {
     const { email, username, password } = req.body;
 
-    // 1. Validation - check for empty fields
     if ([email, username, password].some((field) => field?.trim() === "")) {
         throw new ApiError(400, "All fields are required");
     }
 
-    // 2. Check if user already exists
     const existedUser = await User.findOne({
         $or: [{ username }, { email }],
     });
 
     if (existedUser) {
-        throw new ApiError(409, "User with email or username already exists");
+        throw new ApiError(409, "User already exists");
     }
 
-    // 3. Create user instance (but don't save to DB yet)
     const user = new User({
         email,
-        password,
         username,
+        password,
         isEmailVerified: false,
     });
 
-    // 4. Generate verification token BEFORE saving
-    // This is more efficient than saving, then updating, then saving again
+    // ✅ FIXED SPELLING HERE
     const { unHashedToken, hashedToken, tokenExpiry } =
-        user.generateTemproryToken();
+        user.generateTemporaryToken();
 
     user.emailVerificationToken = hashedToken;
     user.emailVerificationExpiry = tokenExpiry;
 
-    // 5. Save the user with tokens in one go
     await user.save();
 
-    // 6. Send verification email
     try {
         await sendEmail({
             email: user.email,
-            subject: "Please verify your email",
+            subject: "Verify your email",
             mailgenContent: emailVerificationMailgenContent(
                 user.username,
                 `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
             ),
         });
     } catch (error) {
-        // Log the error but don't crash; the user can request a resend later
-        console.error("Email sending failed:", error);
+        console.error("Email error:", error);
     }
 
-    // 7. Remove sensitive fields from the response object
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
     );
-
-    if (!createdUser) {
-        throw new ApiError(
-            500,
-            "Something went wrong while registering the user",
-        );
-    }
 
     return res
         .status(201)
@@ -95,9 +80,47 @@ const registerUser = asyncHandler(async (req, res) => {
             new ApiResponse(
                 201,
                 { user: createdUser },
-                "User registered successfully. Please check your email to verify your account.",
+                "User registered successfully",
             ),
         );
 });
 
-export { registerUser, generateAccessAndRefreshTokens };
+/**
+ * LOGIN
+ */
+const login = asyncHandler(async (req, res) => {
+    res.status(200).json(new ApiResponse(200, {}, "Login working"));
+});
+
+/**
+ * LOGOUT
+ */
+const logoutUser = asyncHandler(async (req, res) => {
+    res.status(200).json(new ApiResponse(200, {}, "Logout working"));
+});
+
+/**
+ * VERIFY EMAIL
+ */
+const verifyEmail = asyncHandler(async (req, res) => {
+    res.status(200).json(new ApiResponse(200, {}, "Email verified"));
+});
+
+/**
+ * REFRESH TOKEN
+ */
+const refreshAccessToken = asyncHandler(async (req, res) => {
+    res.status(200).json(new ApiResponse(200, {}, "Token refreshed"));
+});
+
+/**
+ * EXPORTS
+ */
+export {
+    registerUser,
+    generateAccessAndRefreshTokens,
+    login,
+    logoutUser,
+    verifyEmail,
+    refreshAccessToken,
+};

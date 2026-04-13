@@ -3,9 +3,8 @@ import connectDB from "./db/index.js";
 import app from "./app.js";
 
 // ✅ Load env first
-dotenv.config({
-    path: "./.env",
-});
+dotenv.config({});
+console.log("MAIL USER:", process.env.MAILTRAP_SMTP_USER);
 
 const PORT = process.env.PORT || 3000;
 
