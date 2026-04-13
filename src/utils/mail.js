@@ -2,16 +2,23 @@ import Mailgen from "mailgen";
 import nodemailer from "nodemailer";
 
 const sendEmail = async (options) => {
-    // Transporter should be inside or outside, but must use Number for port
+    console.log("📧 Sending email...");
+
+    // ✅ Transporter (FINAL FIXED CONFIG)
     const transporter = nodemailer.createTransport({
         host: process.env.MAILTRAP_SMTP_HOST,
-        port: Number(process.env.MAILTRAP_SMTP_PORT),
+        port: 587, // ✅ use 587
+        secure: false, // required for 587
         auth: {
             user: process.env.MAILTRAP_SMTP_USER,
             pass: process.env.MAILTRAP_SMTP_PASS,
         },
+        tls: {
+            rejectUnauthorized: false, // 🔥 fixes connection close issue
+        },
     });
 
+    // ✅ Mailgen setup
     const mailgenerator = new Mailgen({
         theme: "default",
         product: {
@@ -20,9 +27,11 @@ const sendEmail = async (options) => {
         },
     });
 
+    // ✅ Generate email content
     const emailHtml = mailgenerator.generate(options.mailgenContent);
     const emailText = mailgenerator.generatePlaintext(options.mailgenContent);
 
+    // ✅ Email object
     const mail = {
         from: "noreply@basecampy.com",
         to: options.email,
@@ -32,23 +41,24 @@ const sendEmail = async (options) => {
     };
 
     try {
-        await transporter.sendMail(mail);
-        console.log(`Email sent to: ${options.email} ✅`);
+        const info = await transporter.sendMail(mail);
+        console.log("✅ MAIL SENT:", info.messageId);
     } catch (error) {
-        console.error("Email failed ❌", error.message);
+        console.error("❌ EMAIL ERROR:", error);
     }
 };
 
+// 📧 Email verification template
 const emailVerificationMailgenContent = (username, verificationUrl) => {
     return {
         body: {
             name: username,
             intro: "Welcome to Basecampy! We're excited to have you onboard.",
             action: {
-                instruction: "To verify your account, please click here:",
+                instruction: "Click below to verify your email:",
                 button: {
                     color: "#22BC66",
-                    text: "Verify Your Email",
+                    text: "Verify Email",
                     link: verificationUrl,
                 },
             },
@@ -57,20 +67,21 @@ const emailVerificationMailgenContent = (username, verificationUrl) => {
     };
 };
 
+// 🔐 Forgot password template
 const forgotPasswordMailgenContent = (username, passwordResetUrl) => {
     return {
         body: {
             name: username,
-            intro: "You are receiving this email because we received a password reset request for your account.",
+            intro: "You requested a password reset.",
             action: {
-                instruction: "Click the button below to reset your password:",
+                instruction: "Click below to reset your password:",
                 button: {
                     color: "#0bb99c",
                     text: "Reset Password",
                     link: passwordResetUrl,
                 },
             },
-            outro: "If you did not request a password reset, please ignore this email.",
+            outro: "If you didn’t request this, ignore this email.",
         },
     };
 };

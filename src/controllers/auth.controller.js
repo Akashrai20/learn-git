@@ -5,25 +5,6 @@ import { asyncHandler } from "../utils/async-handler.js";
 import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
 
 /**
- * Generate access + refresh token
- */
-const generateAccessAndRefreshTokens = async (userId) => {
-    try {
-        const user = await User.findById(userId);
-
-        const accessToken = user.generateAccessToken();
-        const refreshToken = user.generateRefreshToken();
-
-        user.refreshToken = refreshToken;
-        await user.save({ validateBeforeSave: false });
-
-        return { accessToken, refreshToken };
-    } catch (error) {
-        throw new ApiError(500, "Token generation failed");
-    }
-};
-
-/**
  * REGISTER USER
  */
 const registerUser = asyncHandler(async (req, res) => {
@@ -48,7 +29,6 @@ const registerUser = asyncHandler(async (req, res) => {
         isEmailVerified: false,
     });
 
-    // ✅ FIXED SPELLING HERE
     const { unHashedToken, hashedToken, tokenExpiry } =
         user.generateTemporaryToken();
 
@@ -57,18 +37,17 @@ const registerUser = asyncHandler(async (req, res) => {
 
     await user.save();
 
-    try {
-        await sendEmail({
-            email: user.email,
-            subject: "Verify your email",
-            mailgenContent: emailVerificationMailgenContent(
-                user.username,
-                `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
-            ),
-        });
-    } catch (error) {
-        console.error("Email error:", error);
-    }
+    // 🔥 EMAIL CALL (no try-catch so error will show)
+    console.log("🔥 Calling sendEmail...");
+
+    await sendEmail({
+        email: user.email,
+        subject: "Verify your email",
+        mailgenContent: emailVerificationMailgenContent(
+            user.username,
+            `${req.protocol}://${req.get("host")}/api/v1/auth/verify-email/${unHashedToken}`,
+        ),
+    });
 
     const createdUser = await User.findById(user._id).select(
         "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
@@ -114,13 +93,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 });
 
 /**
- * EXPORTS
+ * EXPORTS (IMPORTANT)
  */
-export {
-    registerUser,
-    generateAccessAndRefreshTokens,
-    login,
-    logoutUser,
-    verifyEmail,
-    refreshAccessToken,
-};
+export { registerUser, login, logoutUser, verifyEmail, refreshAccessToken };
