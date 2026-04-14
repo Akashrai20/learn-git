@@ -4,6 +4,23 @@ import { ApiError } from "../utils/api-error.js";
 import { asyncHandler } from "../utils/async-handler.js";
 import { emailVerificationMailgenContent, sendEmail } from "../utils/mail.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateAccessToken();
+        const refreshToken = user.generateRefreshToken();
+
+        user.refreshToken = refreshToken;
+        await user.save({ validateBeforeSave: false });
+        return { accessToken, refreshToken };
+    } catch (error) {
+        throw new ApiError(
+            500,
+            "Something went wrong while generating access token",
+        );
+    }
+};
+
 /**
  * REGISTER USER
  */
@@ -64,35 +81,56 @@ const registerUser = asyncHandler(async (req, res) => {
         );
 });
 
-/**
- * LOGIN
- */
 const login = asyncHandler(async (req, res) => {
-    res.status(200).json(new ApiResponse(200, {}, "Login working"));
-});
+    const { email, password, username } = req.body;
 
-/**
- * LOGOUT
- */
-const logoutUser = asyncHandler(async (req, res) => {
-    res.status(200).json(new ApiResponse(200, {}, "Logout working"));
-});
+    if (!email) {
+        throw new ApiError(400, "email is required");
+    }
 
-/**
- * VERIFY EMAIL
- */
-const verifyEmail = asyncHandler(async (req, res) => {
-    res.status(200).json(new ApiResponse(200, {}, "Email verified"));
-});
+    const user = await User.findOne({ email });
 
-/**
- * REFRESH TOKEN
- */
-const refreshAccessToken = asyncHandler(async (req, res) => {
-    res.status(200).json(new ApiResponse(200, {}, "Token refreshed"));
+    if (!user) {
+        throw new ApiError(400, "User doest not exists");
+    }
+
+    const isPasswordValid = user.isPasswordCorrect(password);
+
+    if (!isPasswordValid) {
+        throw new ApiError(400, "Invalid credentials");
+    }
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+        user._id,
+    );
+
+    const loggedInUser = await User.findById(user._id).select(
+        "-password -refreshToken -emailVerificationToken -emailVerificationExpiry",
+    );
+
+    const option = {
+        httpOnly: true,
+        secure: true,
+    };
+
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, option)
+        .cookie("refreshToken", refreshToken, option)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser,
+                    accessToken,
+                    refreshToken,
+                },
+                "User logged in successfully",
+            ),
+        );
 });
 
 /**
  * EXPORTS (IMPORTANT)
  */
-export { registerUser, login, logoutUser, verifyEmail, refreshAccessToken };
+export { registerUser, login, generateAccessAndRefreshTokens };

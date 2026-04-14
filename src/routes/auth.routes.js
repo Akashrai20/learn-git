@@ -1,32 +1,14 @@
 import { Router } from "express";
+import { registerUser, login } from "../controllers/auth.controller.js";
+
+import { validate } from "../middlewares/validator.middleware.js";
 import {
-    registerUser,
-    login,
-    logoutUser,
-    verifyEmail,
-    refreshAccessToken,
-} from "../controllers/auth.controller.js";
-
-// 1. DELETE OR COMMENT OUT THE MIDDLEWARE IMPORT
-// import { verifyJWT } from "../middlewares/auth.middleware.js";
-
+    userRegisterValidator,
+    userLoginValidator,
+} from "../validators/index.js";
 const router = Router();
 
-router.route("/register").post(registerUser);
-router.route("/login").post(login);
-router.route("/verify-email/:verificationToken").get(verifyEmail);
-router.route("/refresh-token").post(refreshAccessToken);
-
-// 2. REMOVE 'verifyJWT' FROM THE LOGOUT ROUTE
-router.route("/logout").post(logoutUser);
+router.route("/register").post(userRegisterValidator(), validate, registerUser);
+router.route("/login").post(userLoginValidator(), validate, login);
 
 export default router;
-
-// import { Router } from "express";
-// import { registerUser } from "../controllers/auth.controller.js";
-
-// const router = Router();
-
-// router.route("/register").post(registerUser);
-
-// export default router;
