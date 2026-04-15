@@ -130,7 +130,78 @@ const login = asyncHandler(async (req, res) => {
         );
 });
 
+// removing all the cookies and logged out
+const logoutUser = asyncHandler(async (req, res) => {
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $sets: {
+                refreshToken: "",
+            },
+        },
+        {
+            new: true,
+        },
+    );
+    const option = {
+        httpOnly: true,
+        secure: true,
+    };
+    return res
+        .status(200)
+        .clearCookie("accessToken", option)
+        .clearCookie("refreshToken", option)
+        .json(new ApiResponse(200, {}, "User logged out"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, req.user, "Current user fetched successfully"),
+        );
+});
+
+const verifyEmail = asyncHandler(async (req, res) => {
+    const { verificationToken } = req.params;
+
+    if (!verificationToken) {
+        throw new ApiError(400, "Email verification token is missing");
+    }
+
+    let hashedToken = crypto
+        .createHash("sha256")
+        .update(verificationToken)
+        .digest("hex");
+
+    const user = await User.findOne({
+        emailVerificationToken: hashedToken,
+        emailVerificationExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+        throw new ApiError(400, "Token is invalid or expired");
+    }
+
+    user.emailVerificationToken = undefined;
+    user.emailVerificationExpiry = undefined;
+
+    user.isEmailVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status().json(
+        new ApiResponse(
+            200,
+            {
+                isEmailVerified: true,
+            },
+            "Email is verified",
+        ),
+    );
+});
+
+//const getCurrentUser = asyncHandler(async(req, res) => {})
 /**
  * EXPORTS (IMPORTANT)
  */
-export { registerUser, login, generateAccessAndRefreshTokens };
+export { registerUser, login, logoutUser, getCurrentUser, verifyEmail };
