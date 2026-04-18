@@ -8,6 +8,7 @@ import {
     sendEmail,
 } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
+import { use } from "react";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -321,6 +322,35 @@ const forgotPasswordRequest = asyncHandler(async (req, res) => {
                 "Password reset mail has been sent on your mail id",
             ),
         );
+});
+
+const resetForgotPassword = asyncHandler(async (req, res) => {
+    const { resetToken } = req.params;
+    const { newPassword } = req.body;
+
+    let hashedToken = crypto
+        .createHash("sha256")
+        .update(resetToken)
+        .digest("hex");
+
+    const user = await User.findOne({
+        forgotPasswordToken: hashedToken,
+        forgotPasswordExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+        throw new ApiError(404, "Token is invalid or expired");
+    }
+
+    user.forgotPasswordExpiry = undefined;
+    user.forgotPasswordToken = undefined;
+
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password reset successfully"));
 });
 
 //const getCurrentUser = asyncHandler(async(req, res) => {})
