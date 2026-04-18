@@ -8,7 +8,7 @@ import {
     sendEmail,
 } from "../utils/mail.js";
 import jwt from "jsonwebtoken";
-import { use } from "react";
+import { json } from "express";
 
 const generateAccessAndRefreshTokens = async (userId) => {
     try {
@@ -353,7 +353,22 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Password reset successfully"));
 });
 
-//const getCurrentUser = asyncHandler(async(req, res) => {})
+const changeCurrentPasword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user?._id);
+    const isPasswordValid = await user.isPasswordCorrect(oldPassword);
+
+    if (!isPasswordValid) {
+        throw new ApiError(400, "Invalid old Password");
+    }
+
+    user.password = newPassword;
+    await user.save({ validateBeforeSave: false });
+
+    return res.status(200);
+    json(200, {}, "Password changed succesfully");
+});
 
 /**
  * EXPORTS (IMPORTANT)
@@ -367,4 +382,6 @@ export {
     resendEmailVerification,
     refreshAccessToken,
     forgotPasswordRequest,
+    resetForgotPassword,
+    changeCurrentPasword,
 };
