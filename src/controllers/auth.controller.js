@@ -353,7 +353,7 @@ const resetForgotPassword = asyncHandler(async (req, res) => {
         .json(new ApiResponse(200, {}, "Password reset successfully"));
 });
 
-const changeCurrentPasword = asyncHandler(async (req, res) => {
+const changeCurrentPassword = asyncHandler(async (req, res) => {
     const { oldPassword, newPassword } = req.body;
 
     const user = await User.findById(req.user?._id);
@@ -383,5 +383,5 @@ export {
     refreshAccessToken,
     forgotPasswordRequest,
     resetForgotPassword,
-    changeCurrentPasword,
+    changeCurrentPassword,
 };

@@ -8,7 +8,7 @@ import {
     forgotPasswordRequest,
     resetForgotPassword,
     getCurrentUser,
-    changeCurrentPasword,
+    changeCurrentPassword,
     resendEmailVerification,
 } from "../controllers/auth.controller.js";
 
@@ -46,7 +46,7 @@ router
         verifyJWT,
         userChangeCurrentPasswordValidator(),
         validate,
-        changeCurrentPasword,
+        changeCurrentPassword,
     );
 
 router
